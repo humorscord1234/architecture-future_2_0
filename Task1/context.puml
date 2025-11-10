@@ -1,0 +1,56 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Контекстная диаграмма интеграционной шины (ESB)
+
+Person(admin, "Администратор интеграций", "Настраивает маршруты, политики, адаптеры")
+Person(dev, "Разработчик интеграций", "Публикует коннекторы и схемы сообщений")
+Person(support, "Служба поддержки", "Мониторинг, алерты, разбор инцидентов")
+
+System(esb, "Интеграционная шина (ESB)", "Маршрутизация, трансформации, оркестрация, политики безопасности")
+
+System_Ext(pos, "POS / Ресторанные системы", "Syrve, Moka и др.")
+System_Ext(pgw, "Платежные провайдеры", "Xendit, Midtrans, DOKU, QRIS")
+System_Ext(banking, "Банковская система", "Платежи, выписки, сверка")
+System_Ext(crm, "CRM / ЛК мерчанта", "Профили, статусы заказов")
+System_Ext(erp, "ERP / Финконтур", "Дебет/кредит, справочники, каталоги")
+System_Ext(wms, "Склад / WMS", "Движение товаров")
+System_Ext(notify, "Уведомления", "Email/SMS/Push шлюзы")
+System_Ext(iam, "IAM / SSO", "Keycloak / OAuth2 / OIDC")
+System_Ext(monitoring, "Мониторинг и логи", "Prometheus/Grafana/ELK")
+System_Ext(dwh, "DWH / Lakehouse", "MinIO/Dremio/Nessie")
+System_Ext(legacy, "Legacy-системы", "SOAP/SFTP/Batch интеграции")
+System_Ext(analytics, "BI-платформа", "Superset/Power BI")
+
+Rel(admin, esb, "Управляет конфигурацией и политиками", "UI/API")
+Rel(dev, esb, "Поставляет коннекторы, схемы, трансформации", "GitOps/API")
+Rel(support, esb, "Наблюдает, реагирует на алерты", "Dashboards/Alerts")
+
+Rel(pos, esb, "Заказы, статусы, чеки", "REST/gRPC/Kafka")
+Rel(pgw, esb, "Webhook-и по платежам, рефанды", "HTTPS/Webhook")
+Rel(banking, esb, "Выписки, сверка", "SFTP/ISO20022/REST")
+Rel(crm, esb, "Обновление статусов, профили", "REST")
+Rel(erp, esb, "Справочники, проводки", "REST/SOAP/JDBC")
+Rel(wms, esb, "Резервы, отгрузки", "REST")
+Rel(notify, esb, "Отправка статусов и алертов", "SMTP/SMS/FCM")
+Rel(iam, esb, "Выдача/валидация токенов", "OIDC/OAuth2")
+Rel(monitoring, esb, "Метрики/логи/трейсы", "OpenTelemetry/Prometheus")
+Rel(dwh, esb, "CDC/события/архивы", "Kafka/S3 API/Batch")
+Rel(legacy, esb, "Обмен данными при миграции", "SOAP/SFTP/Batch")
+Rel(analytics, esb, "Доставляет события и витрины", "Kafka/SQL")
+
+' Внешние потребители данных от ESB
+Rel(esb, crm, "Пушит статусы и события", "REST/Kafka")
+Rel(esb, erp, "Синхронизирует справочники/проводки", "REST/SOAP/JDBC")
+Rel(esb, dwh, "Публикует CDC/архивы", "Kafka/S3 API")
+Rel(esb, notify, "Отправляет уведомления", "SMTP/SMS/FCM")
+Rel(esb, pos, "Команды/отклики (возвраты, отмены)", "REST/gRPC")
+Rel(esb, analytics, "События для дашбордов", "Kafka/SQL")
+
+' Границы доверия / политики
+Boundary(trust, "Политики и безопасность") {
+  Rel(iam, esb, "RBAC/ABAC, выдача токенов", "OAuth2/OIDC")
+  Rel(monitoring, esb, "Аудит, SLO/SLA", "Metrics/Logs/Traces")
+}
+
+@enduml
